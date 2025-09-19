@@ -47,8 +47,8 @@ weather_info_system/
 ### 1. Clone Repository
 
 ```bash
-git clone <repository-url>
-cd weather_info_system
+git clone https://github.com/Aftaza/simple-weather-python.git
+cd simple-weather-python
 ```
 
 ### 2. Install Dependencies
@@ -56,6 +56,7 @@ cd weather_info_system
 ```bash
 pip install -r requirements.txt
 ```
+> Tips: Bisa menggunakn virtual environtment agar lebih aman dari error konflik dependensi
 
 ### 3. Get API Key
 
