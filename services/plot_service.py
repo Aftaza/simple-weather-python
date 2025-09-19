@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from datetime import datetime
+import os # Tambahkan import os untuk membuat folder
 
 # Set matplotlib to use non-interactive backend
 plt.switch_backend('Agg')
@@ -18,12 +19,17 @@ class PlotService:
     def create_weather_plots(self, weather_df: pd.DataFrame) -> str:
         """Membuat grafik cuaca dan mengembalikan nama file"""
         try:
+            # Jika DataFrame kosong, jangan lakukan apa-apa
+            if weather_df.empty:
+                raise ValueError("DataFrame cuaca kosong, tidak bisa membuat grafik.")
+
             # Create figure dengan subplots
             fig, axes = plt.subplots(2, 3, figsize=(18, 12))
             fig.suptitle('Analisis Cuaca Jawa Timur', fontsize=16, fontweight='bold')
             
             # 1. Histogram Suhu
-            axes[0,0].hist(weather_df['temperature'], bins=10, alpha=0.7, color='orange', edgecolor='black')
+            temp_data = weather_df['temperature'].dropna()
+            axes[0,0].hist(temp_data, bins=10, alpha=0.7, color='orange', edgecolor='black')
             axes[0,0].set_title('Distribusi Suhu')
             axes[0,0].set_xlabel('Suhu (°C)')
             axes[0,0].set_ylabel('Jumlah Kecamatan')
@@ -40,16 +46,18 @@ class PlotService:
             axes[0,1].grid(True, alpha=0.3)
             
             # 3. Scatter plot Suhu vs Kelembaban
-            axes[0,2].scatter(weather_df['temperature'], weather_df['humidity'], 
-                            alpha=0.7, color='red', s=60, edgecolors='black')
+            scatter_data = weather_df[['temperature', 'humidity']].dropna()
+            axes[0,2].scatter(scatter_data['temperature'], scatter_data['humidity'], 
+                              alpha=0.7, color='red', s=60, edgecolors='black')
             axes[0,2].set_title('Suhu vs Kelembaban')
             axes[0,2].set_xlabel('Suhu (°C)')
             axes[0,2].set_ylabel('Kelembaban (%)')
             axes[0,2].grid(True, alpha=0.3)
             
             # 4. Box plot kecepatan angin
-            axes[1,0].boxplot(weather_df['wind_speed'], patch_artist=True,
-                            boxprops=dict(facecolor='lightgreen', alpha=0.7))
+            wind_data = weather_df['wind_speed'].dropna()
+            axes[1,0].boxplot(wind_data, patch_artist=True,
+                              boxprops=dict(facecolor='lightgreen', alpha=0.7))
             axes[1,0].set_title('Distribusi Kecepatan Angin')
             axes[1,0].set_ylabel('Kecepatan Angin (km/h)')
             axes[1,0].grid(True, alpha=0.3)
@@ -57,7 +65,7 @@ class PlotService:
             # 5. Bar chart tekanan udara per kecamatan (top 10)
             top_pressure = weather_df.nlargest(10, 'pressure')
             axes[1,1].barh(range(len(top_pressure)), top_pressure['pressure'], 
-                          color='purple', alpha=0.7, edgecolor='black')
+                           color='purple', alpha=0.7, edgecolor='black')
             axes[1,1].set_title('Top 10 Tekanan Udara Tertinggi')
             axes[1,1].set_xlabel('Tekanan (mb)')
             axes[1,1].set_ylabel('Kecamatan')
@@ -66,28 +74,36 @@ class PlotService:
             axes[1,1].grid(True, alpha=0.3)
             
             # 6. Pie chart indeks UV
-            uv_ranges = pd.cut(weather_df['uv_index'], bins=[0, 3, 6, 8, 11, float('inf')], 
-                              labels=['Rendah (0-3)', 'Sedang (3-6)', 'Tinggi (6-8)', 
-                                     'Sangat Tinggi (8-11)', 'Ekstrem (>11)'])
-            uv_counts = uv_ranges.value_counts()
-            
-            colors = ['green', 'yellow', 'orange', 'red', 'purple']
-            axes[1,2].pie(uv_counts.values, labels=uv_counts.index, autopct='%1.1f%%',
-                         colors=colors[:len(uv_counts)], startangle=90)
+            uv_data = weather_df['uv_index'].dropna()
+            if not uv_data.empty:
+                uv_ranges = pd.cut(uv_data, bins=[0, 3, 6, 8, 11, float('inf')], 
+                                     labels=['Rendah (0-3)', 'Sedang (3-6)', 'Tinggi (6-8)', 
+                                             'Sangat Tinggi (8-11)', 'Ekstrem (>11)'], right=False)
+                uv_counts = uv_ranges.value_counts()
+                
+                colors = ['green', 'yellow', 'orange', 'red', 'purple']
+                axes[1,2].pie(uv_counts.values, labels=uv_counts.index, autopct='%1.1f%%',
+                              colors=colors[:len(uv_counts)], startangle=90)
             axes[1,2].set_title('Distribusi Indeks UV')
             
             # Adjust layout
             plt.tight_layout()
             
-            # Save plot
+            # Save plot ke folder 'data'
+            folder_name = "data"
+            os.makedirs(folder_name, exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"grafik_cuaca_jatim_{timestamp}.png"
-            plt.savefig(filename, dpi=300, bbox_inches='tight')
+            file_path = os.path.join(folder_name, filename)
+            
+            plt.savefig(file_path, dpi=300, bbox_inches='tight')
             plt.close()
             
-            return filename
+            return file_path
             
         except Exception as e:
+            # Pastikan plot ditutup jika terjadi error
+            plt.close()
             raise Exception(f"Error membuat grafik: {e}")
     
     def get_weather_statistics(self, weather_df: pd.DataFrame) -> tuple:
