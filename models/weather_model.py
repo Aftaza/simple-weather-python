@@ -1,6 +1,7 @@
 # models/weather_model.py
 import pandas as pd
 import threading
+import os  # <-- 1. Impor modul os
 from datetime import datetime
 from typing import Dict, Optional
 from services.weather_api import WeatherAPIService
@@ -25,7 +26,7 @@ class WeatherModel:
                 self.weather_df.set_index('district', inplace=True)
                 # Convert numeric columns
                 numeric_cols = ['temperature', 'feels_like', 'humidity', 'wind_speed', 
-                               'visibility', 'pressure', 'uv_index']
+                                'visibility', 'pressure', 'uv_index']
                 for col in numeric_cols:
                     if col in self.weather_df.columns:
                         self.weather_df[col] = pd.to_numeric(self.weather_df[col], errors='coerce')
@@ -47,18 +48,28 @@ class WeatherModel:
                 return self.weather_df.loc[district]
             return None
     
-    def export_to_csv(self, filename: str = None) -> str:
-        """Export data ke file CSV"""
+    def export_to_csv(self, filename: str = None) -> Optional[str]:
+        """Export data ke file CSV di dalam folder 'data'."""
+        
+        folder_name = "data"
+        
+        os.makedirs(folder_name, exist_ok=True)
+        
         if filename is None:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"cuaca_jatim_{timestamp}.csv"
+        
+        file_path = os.path.join(folder_name, filename)
         
         with self.lock:
             if not self.weather_df.empty:
                 # Reset index untuk export
                 export_df = self.weather_df.reset_index()
-                export_df.to_csv(filename, index=False, encoding='utf-8')
-                return filename
+                
+                export_df.to_csv(file_path, index=False, encoding='utf-8')
+                
+                return file_path
+        
         return None
     
     def get_statistics(self) -> Dict:
@@ -68,7 +79,7 @@ class WeatherModel:
                 return {}
             
             numeric_cols = ['temperature', 'feels_like', 'humidity', 'wind_speed', 
-                           'visibility', 'pressure', 'uv_index']
+                            'visibility', 'pressure', 'uv_index']
             stats = {}
             
             for col in numeric_cols:
